@@ -22,5 +22,9 @@ import userRouter from "./routes/user.routes.js";
 //declare Routes
 
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/login", userRouter);
+
+// Secured Routes
+app.use("/api/v1/logout", userRouter);
 
 export { app };
