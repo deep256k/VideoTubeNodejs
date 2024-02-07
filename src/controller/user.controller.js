@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -183,4 +184,62 @@ export const logoutUser = asyncHandler(async (req, res) => {
     .clearCookie("accessToken", options)
     .clearCookie("refereshToken", options)
     .json(new ApiResponse(200, {}, "User Loggedout Successfully"));
+});
+
+export const refershAccessToken = asyncHandler(async (req, res) => {
+  // Steps to Referesh the both tokens.
+  //1. Get the refersh token from frontend via cookies or header
+  //2. Decode the token and get the userid, if no user throw error
+  //3. using Id get the refersh token of that user.
+  //4. Compare both refersh token. If comparison fails then throw error
+  //5. Generate new Tokens and send via cookies.
+  //NOTE:- Refersh token should not be send via Authorization headers
+  try {
+    console.log("refershAccessToken");
+    const incomingRefereshToken =
+      req.cookies?.refereshToken || req.body?.refereshToken;
+    if (!incomingRefereshToken) {
+      throw new ApiError(400, "Refersh Token is not provided");
+    }
+    const decodedToken = jwt.verify(
+      incomingRefereshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+    );
+    console.log("decodedToken", decodedToken);
+    const user = await User.findById(decodedToken?._id);
+    if (!user) {
+      throw new ApiError(400, "Please provide a correct referesh token");
+    }
+    console.log("USER IS", user);
+
+    //TODO- Check why refersh token is not getting saved in the DB
+
+    if (incomingRefereshToken !== user?.refereshToken) {
+      throw new ApiError(401, "Refersh token expired");
+    }
+    const { accessToken, refereshToken } = await generateAccessAndRefershTokens(
+      user?._id,
+    );
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    return res
+      .status(200)
+      .cookie("refereshToken", refereshToken, options)
+      .cookie("accessToken", accessToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken,
+            refereshToken,
+          },
+          "token is refershed",
+        ),
+      );
+  } catch (error) {
+    throw new ApiError(400, "Error during generating refersh tokens");
+  }
 });
