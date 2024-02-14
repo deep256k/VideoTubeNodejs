@@ -22,7 +22,7 @@ const generateAccessAndRefershTokens = async (userId) => {
   }
 };
 
-export const registerUser = asyncHandler(async (req, res) => {
+const registerUser = asyncHandler(async (req, res) => {
   // Steps to register the user
   //1. Get the values from request
   //2. Check for the validation
@@ -94,7 +94,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, createdUser, "User Created Successfully"));
 });
 
-export const loginUser = asyncHandler(async (req, res) => {
+const loginUser = asyncHandler(async (req, res) => {
   // Steps to login a user
   //1. check if email, username and password is provided, if not return
   //2. check if user exist for provided email and username in the DB, if not return
@@ -151,7 +151,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-export const logoutUser = asyncHandler(async (req, res) => {
+const logoutUser = asyncHandler(async (req, res) => {
   // Steps to logout USer
   //1. This will be secure route so add a middle ware to extract acesstoken and refersh token.
   //2. We need to get the refersh token from the frontend,
@@ -186,7 +186,7 @@ export const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User Loggedout Successfully"));
 });
 
-export const refershAccessToken = asyncHandler(async (req, res) => {
+const refershAccessToken = asyncHandler(async (req, res) => {
   // Steps to Referesh the both tokens.
   //1. Get the refersh token from frontend via cookies or header
   //2. Decode the token and get the userid, if no user throw error
@@ -243,3 +243,46 @@ export const refershAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Error during generating refersh tokens");
   }
 });
+
+const changePassword = asyncHandler(async (req, res) => {
+  // Steps to Chnage password
+  //1. get email, currentPassword, updatedPassword from user
+  //2. if checks fails return error
+  //3. check if provided password is correct. if not return error
+  //3. find the user by emailid and update old password with the new one.
+  //4. send the response to user after success.
+  console.log("changePassword", changePassword);
+  const { oldPassword, newPassword } = req.body;
+  const user = await User.findById(req?.user._id);
+  const checkPassword = await user.isPasswordCorrect(oldPassword);
+  console.log("checkPassword", checkPassword);
+  if (!checkPassword) {
+    throw new ApiError(404, "Invalid old password");
+  }
+  user.password = newPassword;
+
+  //Read about this
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password Chnaged Successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req?.user, "current User fetched Successfully"));
+});
+
+const updateAccountDetails = () => {};
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refershAccessToken,
+  changePassword,
+  getCurrentUser,
+  updateAccountDetails,
+};
