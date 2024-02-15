@@ -277,6 +277,100 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
 const updateAccountDetails = () => {};
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  // LEARNING
+  // when we subcribe any channel so we are pushing our and channel details to the subscription collection
+  // Since both channel and subcriber are User so we push them as a USER schema.
+  //  Steps  to get the profile Details
+  // Suppose i land on a Channel and i want to find the number of subscriber , number of subscribed, whether i have subcribed or not
+  //1. get the channel(userid) id from url params
+  //2. Now get the information of that particular channel from the User collection
+  //3. now we need to get the Subcriber, subscribed , isSubscribed info from the Subscription collection and join it with the currrent user
+  //4. After joining we need to send the info to frontednd with the updated Subcriber, subscribed , isSubscribed fields
+  //5. After getting the single document of that particular user.
+
+  // THERE ARE 2 TYPES IN THE SUBSCRIPTION COLLECTION
+  // 1. CHANNEL 2. SUBSCRIBER
+  //. Steps  TO GET SUBSCRIBER
+  // 1. search in the subscription collection and search in the CHANNEL where userid is equal to the given id
+  //STEPS TO GET SUBSCRIBED COUNT
+  // 1. search in the subscription collection and search in  the  SUBSCRIBER fields where userid is equla to the given id
+
+  const channelName = req?.params;
+
+  if (!channelName) {
+    throw new ApiError(400, "channel name is missing");
+  }
+
+  const channelDetails = await User.aggregate([
+    {
+      $match: {
+        userName: channelName?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "totalSubscriber",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: "$totalSubscriber",
+        },
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        isSubscribed: {
+          $cond: {
+            if: {
+              $in: [req.user?._id, "$totalSubscriber.subscriber"],
+            },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
+
+  if (!channel?.length) {
+    throw new ApiError(404, "channel does not exists");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channelDetails[0],
+        "User channel fetched successfully",
+      ),
+    );
+});
 export {
   registerUser,
   loginUser,
